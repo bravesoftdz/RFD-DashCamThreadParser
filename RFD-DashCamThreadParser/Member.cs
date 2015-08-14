@@ -6,9 +6,13 @@ using System.Threading.Tasks;
 
 namespace RFD_DashCamThreadParser
 {
-    class Author
+    class Member
     {
         public string Name { get; set; }
         public string Url { get; set; }
+        public DateTime FirstPost { get; set; }
+        public DateTime LastPost { get; set; }
+        public int TextPosts { get; set; }
+        public int VideoPosts { get; set; }
     }
 }

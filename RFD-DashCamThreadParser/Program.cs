@@ -13,7 +13,7 @@ namespace RFD_DashCamThreadParser
     class Program
     {
         private static Regex PostRegex = new Regex("[<]li class[=]\"postbitlegacy postbitim postcontainer\" id[=]\"post_(\\d+)\"[>](.*?)[<][!][-][-] ADSENSE AFTER FIRST POST [-][-][>]", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
-        private static Regex AuthorRegex = new Regex("[<]a rel[=]\"nofollow\" class[=]\".*?\" href[=]\"(.*?)\" title=\".*?\"[>][<]strong[>](.*?)[<][/]strong[>][<][/]a[>]", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
+        private static Regex MemberRegex = new Regex("[<]a rel[=]\"nofollow\" class[=]\".*?\" href[=]\"(.*?)\" title=\".*?\"[>][<]strong[>](.*?)[<][/]strong[>][<][/]a[>]", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
         private static Regex DateRegex = new Regex("[<]span class=\"date\"[>](.*?)[&]nbsp[;][<]span class[=]\"time\"[>](.*?)[<][/]span[>][<][/]span[>]", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
         private static Regex PostedByRegex = new Regex("[<]div class[=]\"bbcode_postedby\"[>](.*?)[<][/]div[>]", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
         private static Regex ParentIdRegex = new Regex("[/][#]post(\\d+)\"", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
@@ -47,7 +47,7 @@ namespace RFD_DashCamThreadParser
                             _Posts.Add(new Post()
                             {
                                 Id = PostId,
-                                Author = GetAuthor(PostHtml, PostId),
+                                Member = GetMember(PostHtml, PostId),
                                 Date = GetDate(PostHtml, PostId),
                                 Page = PageNumber,
                                 ParentIds = GetParentIds(PostHtml, PostId),
@@ -68,20 +68,31 @@ namespace RFD_DashCamThreadParser
                 }
             }
 
-            // Now get the number of replies
+            // Now get the number of replies (go backwards to ensure ReplyCountTotal works)
             Console.WriteLine("- Updating ReplyCounts...");
             for (int i = _Posts.Count - 1; i >= 0; i--)
             {
-                Console.Write(" {0}", i);
-
                 Post Post = _Posts[i];
                 Post.ReplyCountDirect = _Posts.Where(x => x.ParentIds.Contains(Post.Id)).Count();
                 Post.ReplyCountTotal = Post.ReplyCountDirect + _Posts.Where(x => x.ParentIds.Contains(Post.Id)).Select(x => x.ReplyCountTotal).Sum();
             }
 
+            Console.WriteLine("- Saving RFD-DashCamVideos.json...");
+            File.WriteAllText("RFD-DashCamVideos.json", "{\"data\":" + JsonConvert.SerializeObject(_Posts.Where(x => x.VideoUrls.Count > 0), Formatting.Indented, new JsonSerializerSettings() { ContractResolver = new VideosContractResolver() }) + "}");
+
+            // Get member-based data
+            var Members = _Posts.GroupBy(x => x.Member.Name).Select(x => x.First().Member).ToList();
+            foreach (Member Member in Members)
+            {
+                Member.FirstPost = _Posts.Where(x => x.Member.Name == Member.Name).OrderBy(x => x.Date).First().Date;
+                Member.LastPost = _Posts.Where(x => x.Member.Name == Member.Name).OrderByDescending(x => x.Date).First().Date;
+                Member.TextPosts = _Posts.Where(x => (x.Member.Name == Member.Name) && (x.VideoUrls.Count == 0)).Count();
+                Member.VideoPosts = _Posts.Where(x => (x.Member.Name == Member.Name) && (x.VideoUrls.Count > 0)).Count();
+            }
+
             Console.WriteLine();
-            Console.WriteLine("- Saving file...");
-            File.WriteAllText("RFD-DashCamVideos.json", "{\"data\":" + JsonConvert.SerializeObject(_Posts.Where(x => x.VideoUrls.Count > 0)) + "}");
+            Console.WriteLine("- Saving RFD-DashCamMembers.json...");
+            File.WriteAllText("RFD-DashCamMembers.json", "{\"data\":" + JsonConvert.SerializeObject(Members.OrderBy(x => x.Name), Formatting.Indented) + "}");
 
             if (Debugger.IsAttached)
             {
@@ -90,20 +101,20 @@ namespace RFD_DashCamThreadParser
             }
         }
 
-        private static Author GetAuthor(string html, int postId)
+        private static Member GetMember(string html, int postId)
         {
-            Match AuthorMatch = AuthorRegex.Match(html);
-            if (AuthorMatch.Success && AuthorMatch.Groups[0].Success)
+            Match MemberMatch = MemberRegex.Match(html);
+            if (MemberMatch.Success && MemberMatch.Groups[0].Success)
             {
-                return new Author()
+                return new Member()
                 {
-                    Name = AuthorMatch.Groups[2].Value,
-                    Url = AuthorMatch.Groups[1].Value
+                    Name = MemberMatch.Groups[2].Value,
+                    Url = MemberMatch.Groups[1].Value
                 };
             }
             else
             {
-                Console.WriteLine("  * Didn't find post author for {0}", postId);
+                Console.WriteLine("  * Didn't find post member for {0}", postId);
                 Console.ReadKey();
             }
 
