@@ -12,7 +12,7 @@ namespace RFD_DashCamThreadParser
 {
     class Program
     {
-        private static Regex PostRegex = new Regex("[<]li class[=]\"postbitlegacy postbitim postcontainer\" id[=]\"post_(\\d+)\"[>](.*?)[<][!][-][-] ADSENSE AFTER FIRST POST [-][-][>]", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
+        private static Regex PostRegex = new Regex("[<]li class[=]\"postbitlegacy postbitim postcontainer\" id[=]\"post_(\\d+)\"[>](.*?)[<][!][-][-] (AD|ADSENSE) AFTER FIRST POST [-][-][>]", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
         private static Regex MemberRegex = new Regex("[<]a rel[=]\"nofollow\" class[=]\".*?\" href[=]\"(.*?)\" title=\".*?\"[>][<]strong[>](.*?)[<][/]strong[>][<][/]a[>]", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
         private static Regex DateRegex = new Regex("[<]span class=\"date\"[>](.*?)[&]nbsp[;][<]span class[=]\"time\"[>](.*?)[<][/]span[>][<][/]span[>]", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
         private static Regex PostedByRegex = new Regex("[<]div class[=]\"bbcode_postedby\"[>](.*?)[<][/]div[>]", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
